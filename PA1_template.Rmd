@@ -1,25 +1,81 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+#Peer Assesment 1
 
+##Loading and Preprocessing the data
 
-## Loading and preprocessing the data
+```{r}
+activity <- read.csv("./activity.csv")
+```
 
+##What is the mean total number of steps taken per day?
 
+```{r}
+daily.steps <- tapply(activity$steps, activity$date, FUN = sum, na.rm = TRUE)
+datestemp <- activity$date
+datestemp2 <- levels(datestemp)
+dates <- as.Date(datestemp2)
+table <- cbind(dates, daily.steps)
+plot(x = dates, y = daily.steps, type = "h")
+mean(daily.steps)
+median(daily.steps)
+```
 
-## What is mean total number of steps taken per day?
+##What is the averaacge daily activity pattern?
 
+```{r}
+averageday <- aggregate.data.frame(x = list(steps = activity$steps), by = list(interval = activity$interval), FUN = mean, na.rm = TRUE)
+plot(x = averageday$interval, y = averageday$steps, type = "l")
+averageday[which.max(averageday$steps),]
+```
 
+##Imputing Missing Values
 
-## What is the average daily activity pattern?
+```{r}
+nummberofnastemp <- is.na(activity)
+numberofnas <- sum(nummberofnastemp)
+imput.missing.data <- function(steps, interval) {
+  datapiece <- 0
+  if (!is.na(steps)) {
+      datapiece <- c(steps)
+      }
+  else {
+      datapiece <- averageday[averageday$interval == interval, "steps"]
+  }
+}
+edited.activity <- activity
+edited.activity$steps <- mapply(imput.missing.data, edited.activity$steps, edited.activity$interval)
 
+new.daily.steps <- tapply(edited.activity$steps, edited.activity$date, FUN = sum, na.rm = TRUE)
+datestemp3 <- edited.activity$date
+datestemp4 <- levels(datestemp3)
+dates2 <- as.Date(datestemp4)
+plot(x = dates2, y = new.daily.steps, type = "h")
+mean(new.daily.steps)
+median(new.daily.steps)
+```
+The values are higher as previously the NAs were set to 0 but now they are not. This leads to a higher mean and median as they are taking averages of a the same list but with all the smallest values significantly increased. 
 
+##Are there differences in activity patterns between weekdays and weekends?
 
-## Imputing missing values
+```{r}
+weekdayfunction <- function(date) {  
+if(weekdays(date) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")) {
+    return("Weekday")
+  }
+  else if(weekdays(date) %in% c("Saturday", "Sunday")) {
+    return("Weekend")
+ }
+  else {
+    print("error in finding weekday")
+  }}
+edited.activity$date <- as.Date(edited.activity$date)
+edited.activity$weekday <- weekdays(edited.activity$date)
+edited.activity$weekday2 <- sapply(edited.activity$date, FUN = weekdayfunction)
 
+editedaverageday <- aggregate(steps ~ interval + weekday2, data = edited.activity, mean)
 
-
-## Are there differences in activity patterns between weekdays and weekends?
+library(ggplot2)
+graph <- ggplot(data = editedaverageday, aes(interval, steps))
+graph <- graph + geom_line()
+graph <- graph + facet_grid(weekday2~.)
+graph
+```
